@@ -1,0 +1,11 @@
+{
+  "$schema": "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+  "skills": [
+    {
+      "name": "firecrawl-cli",
+      "description": "Scrape URLs to clean LLM-ready markdown, run asynchronous multi-page crawls, map website structures, and perform search queries with content extraction via native Rust Firecrawl CLI.",
+      "type": "skill-md",
+      "url": "https://spacecorps.github.io/Firecrawl-Cli/llms.txt"
+    }
+  ]
+}

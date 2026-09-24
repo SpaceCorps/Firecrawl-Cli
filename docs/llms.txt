@@ -1,0 +1,55 @@
+# Firecrawl CLI
+
+> A blazing fast native command-line tool and agent interface for the Firecrawl v2 API. Built in Rust for developers and autonomous AI agents.
+
+## When to Use This CLI
+
+Use the `firecrawl` CLI whenever you need to:
+- **Scrape single web pages:** Convert any web page to clean, LLM-ready markdown or structured HTML with optional ad-blocking, tag filtering, and mobile emulation.
+- **Run multi-page website crawls:** Asynchronously crawl whole websites or URL subtrees up to thousands of pages with configurable depth, paths, and delay.
+- **Discover website URL structures:** Map websites from their sitemaps or on-page links to generate comprehensive lists of URLs.
+- **Search the web with page extraction:** Run web searches and simultaneously extract the underlying page contents in a single command.
+- **Agentic automation:** Drive web data collection deterministically via `--json` output and stable error exit codes.
+
+Do NOT use this tool if:
+- You need a visual browser automation recorder or GUI.
+- You are trying to interact with internal non-HTTP network protocols.
+
+## Core Agent Operating Principles
+
+1. **Authentication Options:** Pass `--account <name>` (short `-a <name>`) to use keys stored in your native OS keystore, or provide `--api-key <key>` or set `FIRECRAWL_API_KEY`.
+2. **First-Time Setup:** Run `firecrawl login` to authenticate with your Firecrawl account key (opens the browser to copy an API key) or use `printf %s "$KEY" | firecrawl accounts add default --api-key-stdin` in headless runners.
+3. **Machine-Readable Outputs:** Always supply `--json` when parsing command results in scripts or LLM tool-calling loops.
+4. **Structured Error Codes:** Non-zero exit codes carry structured error envelopes with stable machine-readable codes (`no_account`, `auth_required`, `not_found`, `rate_limited`, `invalid_input`, `network`, `error`).
+
+## Key Command Patterns
+
+### Authentication & Accounts
+- `firecrawl login [name]`: Interactively authenticate and store the API key in the OS keystore.
+- `firecrawl accounts add <name> --api-key <key>`: Store an account key in the native keystore.
+- `firecrawl accounts list --check`: List all configured accounts and verify key validity.
+- `firecrawl accounts test <name>`: Verify connectivity and inspect credit balance.
+
+### Web Scraping
+- `firecrawl scrape <URL> --json`: Extract page content as markdown.
+- `firecrawl scrape <URL> --formats markdown,html --json`: Extract multiple formats.
+- `firecrawl scrape <URL> --only-clean-content --mobile --json`: Clean boilerplate with mobile emulation.
+
+### Multi-Page Crawling
+- `firecrawl crawl start <URL> --limit 50 --max-depth 2 --json`: Initiate an asynchronous crawl.
+- `firecrawl crawl status <ID> --json`: Check crawl status and retrieve extracted pages.
+- `firecrawl crawl cancel <ID> --json`: Stop an in-progress crawl job.
+
+### Sitemap & URL Mapping
+- `firecrawl map <URL> --json`: Discover all indexable URLs on a domain.
+- `firecrawl map <URL> --search "docs" --limit 100 --json`: Filter URLs by relevance.
+
+### Deep Web Search
+- `firecrawl search "query" --limit 5 --json`: Search and return web hits.
+- `firecrawl search "query" --formats markdown --limit 3 --json`: Search and extract full markdown.
+
+## API Specification & Documentation
+- Full Documentation: https://spacecorps.github.io/Firecrawl-Cli/
+- Detailed Agent Manual: https://spacecorps.github.io/Firecrawl-Cli/llms-full.txt
+- Firecrawl Official Site: https://www.firecrawl.dev
+- Upstream C# Prototype: https://github.com/nielsbosma/Firecrawl.Console

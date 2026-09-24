@@ -1,0 +1,179 @@
+# Firecrawl CLI — Complete Agent Operating Manual
+
+Version: 1.0.0 (API Target: Firecrawl v2)
+Binary: `firecrawl`
+Repository: https://github.com/SpaceCorps/Firecrawl-Cli
+Website: https://spacecorps.github.io/Firecrawl-Cli/
+
+This manual provides an exhaustive specification for autonomous AI agents, script engines, and terminal pipelines driving `firecrawl`.
+
+---
+
+## 1. Operating Protocol & Agent Rules
+
+1. **Authentication:**
+   - Command flag: `-a <account>` or `--account <account>` (retrieves key from local OS keystore).
+   - Direct flag: `--api-key <key>`.
+   - Environment variable: `FIRECRAWL_API_KEY`.
+   - Custom instance URL: `FIRECRAWL_API_URL` (default: `https://api.firecrawl.dev/v2/`).
+
+2. **Output Stream Separation:**
+   - Standard output (`stdout`) contains only the formatted result. Default is YAML; pass `--json` for raw JSON.
+   - Standard error (`stderr`) contains error envelopes, diagnostic warnings, and prompts.
+   - `stdout` is always clean, structured, and safe to pipe into parsers (e.g. `jq`).
+
+3. **Handling Asynchronous Jobs:**
+   - `crawl start` returns a JSON object with `id`.
+   - Agents should poll `crawl status <id>` until `status == "completed"` or `status == "failed"`.
+   - Use `crawl cancel <id>` if the task needs to be aborted.
+
+4. **Error Handling & Exit Codes:**
+   - Every non-zero exit prints a structured JSON/YAML envelope to `stderr`.
+   - Format:
+     ```json
+     {
+       "error": "Description of error",
+       "code": "auth_required | not_found | rate_limited | invalid_input | no_account | network | error",
+       "detail": "HTTP 401: Unauthorized",
+       "remediation": "firecrawl login"
+     }
+     ```
+   - Exit Code Table:
+     | Code | Name | Meaning & Agent Strategy |
+     | :--- | :--- | :--- |
+     | 0 | `ok` | Success. Parse stdout. |
+     | 1 | `error` | Unclassified error. Report and stop. |
+     | 2 | `network` | Network failure or timeout. Retry once, then stop. |
+     | 3 | `auth_required` | Invalid/revoked API key or missing permissions. Stop and surface remediation to human. Do not retry. |
+     | 4 | `not_found` | Resource or job ID not found. Do not retry. |
+     | 5 | `rate_limited` | Rate limit or credit quota exceeded. Back off exponentially or request human intervention. |
+     | 6 | `invalid_input` | Parameter validation failure. Fix arguments and retry. |
+     | 7 | `no_account` | No account or API key configured. Run `firecrawl login`. |
+
+---
+
+## 2. Command Reference
+
+### `scrape`
+Scrapes a single URL and extracts content into markdown or other formats.
+
+```bash
+firecrawl scrape <URL> [OPTIONS]
+```
+
+Arguments:
+- `<URL>`: Target web URL (required).
+
+Options:
+- `-a, --account <ACCOUNT>`: Account name in keystore.
+- `--api-key <KEY>`: Direct API key override.
+- `--formats <FORMATS>`: Comma-separated output formats: `markdown`, `html`, `rawHtml`, `screenshot`, `links`. Default is `markdown`.
+- `--only-main-content [BOOL]`: Exclude headers, navigation, footers (default: true).
+- `--only-clean-content`: LLM-based pass to remove residual boilerplate.
+- `--include-tags <TAGS>`: Comma-separated HTML tags to include.
+- `--exclude-tags <TAGS>`: Comma-separated HTML tags to exclude.
+- `--wait-for <MS>`: Milliseconds to wait before extracting content.
+- `--timeout <MS>`: Request timeout in milliseconds (default: 60000).
+- `--mobile`: Emulate a mobile device.
+- `--block-ads [BOOL]`: Block ads and cookie popups (default: true).
+- `--remove-base64-images [BOOL]`: Strip base64 images from markdown output (default: true).
+- `--json`: Output raw JSON.
+
+Examples:
+```bash
+firecrawl scrape https://example.com --json
+firecrawl scrape https://news.ycombinator.com --formats markdown,links --only-clean-content
+```
+
+---
+
+### `crawl`
+Multi-page asynchronous web crawling.
+
+#### `crawl start <URL>`
+```bash
+firecrawl crawl start <URL> [OPTIONS]
+```
+Options:
+- `--limit <COUNT>`: Maximum pages to crawl (default: 10000).
+- `--max-depth <DEPTH>`: Maximum link discovery depth.
+- `--include-paths <PATTERNS>`: Comma-separated URL path regex patterns to include.
+- `--exclude-paths <PATTERNS>`: Comma-separated URL path regex patterns to exclude.
+- `--sitemap <MODE>`: Sitemap mode: `skip`, `include`, `only` (default: `include`).
+- `--ignore-query-params`: Prevent re-scraping same path with different query params.
+- `--entire-domain`: Follow sibling/parent URLs, not just child paths.
+- `--allow-external`: Follow external website links.
+- `--allow-subdomains`: Follow subdomain links.
+- `--delay <SECONDS>`: Delay in seconds between requests.
+- `--formats <FORMATS>`: Comma-separated output formats (e.g. `markdown`).
+- `--only-main-content [BOOL]`: Exclude headers, navigation, footers.
+- `--json`: Output raw JSON containing the job `id`.
+
+#### `crawl status <ID>`
+```bash
+firecrawl crawl status <ID> [OPTIONS]
+```
+Returns the progress, page count, and scraped page data for a crawl job.
+
+#### `crawl cancel <ID>`
+```bash
+firecrawl crawl cancel <ID> [OPTIONS]
+```
+Cancels an active crawl job.
+
+---
+
+### `map`
+Discovers and lists all URLs available from a base URL or sitemap.
+
+```bash
+firecrawl map <URL> [OPTIONS]
+```
+Options:
+- `--search <QUERY>`: Filter and rank URLs by keyword relevance.
+- `--sitemap <MODE>`: Sitemap mode: `skip`, `include`, `only` (default: `include`).
+- `--include-subdomains [BOOL]`: Include subdomains (default: true).
+- `--ignore-query-params [BOOL]`: Exclude URLs with query parameters (default: true).
+- `--ignore-cache`: Bypass the sitemap cache.
+- `--limit <COUNT>`: Maximum links to return (default: 5000, max: 100000).
+- `--timeout <MS>`: Timeout in milliseconds.
+- `--json`: Output raw JSON.
+
+---
+
+### `search`
+Executes an intelligent web search and extracts page content.
+
+```bash
+firecrawl search <QUERY> [OPTIONS]
+```
+Options:
+- `--limit <COUNT>`: Number of results (1-100, default: 10).
+- `--country <CODE>`: ISO country code (default: US).
+- `--location <LOCATION>`: Geo-target location string.
+- `--timeout <MS>`: Request timeout in milliseconds (default: 60000).
+- `--formats <FORMATS>`: Comma-separated scrape formats: `markdown`, `html`, `rawHtml`, `links`.
+- `--only-main-content`: Exclude headers, navigation, footers.
+- `--mobile`: Emulate mobile device.
+- `--json`: Output raw JSON.
+
+---
+
+### `login` & `accounts`
+Account management and OS keystore credentials.
+
+- `firecrawl login [name]`: Interactively launch browser, read token, and store in OS keystore.
+- `firecrawl accounts add <name> --api-key <key>`: Store key for `<name>`.
+- `printf %s "$KEY" | firecrawl accounts add <name> --api-key-stdin`: Headless key addition.
+- `firecrawl accounts list [--check]`: List stored accounts and verify validity.
+- `firecrawl accounts test <name>`: Verify connectivity and view credit balance.
+- `firecrawl accounts remove <name> --yes`: Remove credentials from this machine.
+
+---
+
+### `agent-readme`
+Prints the built-in operating manual:
+```bash
+firecrawl agent-readme        # human/markdown format
+firecrawl agent-readme --json # structured data for agent ingestion
+```

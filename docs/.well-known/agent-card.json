@@ -1,0 +1,17 @@
+{
+  "name": "Firecrawl CLI Agent",
+  "description": "Agent interface and high-performance web extraction tool for the Firecrawl v2 API.",
+  "url": "https://spacecorps.github.io/Firecrawl-Cli/",
+  "version": "1.0.0",
+  "capabilities": ["web-scraping", "web-crawling", "sitemap-mapping", "web-search"],
+  "skills": [
+    {
+      "name": "firecrawl-cli",
+      "url": "https://spacecorps.github.io/Firecrawl-Cli/llms.txt"
+    }
+  ],
+  "contact": {
+    "email": "contact@spacecorps.dev",
+    "url": "https://spacecorps.github.io/Firecrawl-Cli/contact.html"
+  }
+}
