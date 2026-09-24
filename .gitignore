@@ -3,4 +3,7 @@ obj/
 *.user
 *.suo
 .vs/
-src/nupkg/
+nupkgs/
+nupkg/
+target/
+.DS_Store
